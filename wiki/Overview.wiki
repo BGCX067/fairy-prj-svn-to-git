@@ -1,0 +1,104 @@
+#summary overview of fairy
+#sidebar SideBar
+
+= Overview =
+
+<wiki:toc max_depth="3" />
+
+== What's fairy? ==
+
+*fairy* is a framework for distributed processing in Ruby, originally designed at Rakuten Institute of Technology with Yukihiro Matsumoto, the founder of Ruby.
+
+Although fairy was inspired by MapReduce model, a well-known programming model for distributed processing, it's more flexible and suitable for wider use. That's due to fairy's programming model, called *filter IF*, and various built-in filters.
+
+fairy is implemented in Ruby and inherits its high productivity and simplicity. fairy's API is quite similar to Ruby. Therefore most programmers who know Ruby can easily understand and use it.
+
+== Programming Model: Filter IF ==
+
+=== Basic Concept ===
+
+http://fairy-prj.googlecode.com/files/fairy_filter_if_basic.png
+
+ * We call data to be input/output, a *data set*.
+ * It consists of multiple *entities* and an entity is a unit of datum, e.g. a line in a text data. 
+ * We call a series of processings, a *job*.
+ * We can apply *filters* for a job. A filter is a unit of processing. Each entity is input into a filter, the filter applies a certain processing to each entity and then outputs entities to the next filter. In addition, it has concurrency as an internal property.
+ * To start a job, first, we open a data set as input data.
+ * Then entities flow through a job to be processed. They basically keep their order while being processed through a job.
+ * A job is finished when it outputs entities to another data set.
+
+=== Group By ===
+
+http://fairy-prj.googlecode.com/files/fairy_filter_if_grpby.png
+
+ * Because a filter processes each entity one by one, basically we can't know or touch the other entities while processing one in a filter.
+ * However, you may need to collect entities along with certain criteria across a data set and make some groups. That's where `group_by` filter come in.
+ * `group_by` divides entities into groups along with the criteria defined by the user.
+ * Input of a filter applied after `group_by` are *bags*. We can treat a bag as Ruby's `Enumerable`.
+ * _Note: The order of entities is lost when `group_by` is applied._
+
+== System Overview ==
+
+ * fairy involves three types of hosts, *master*, *node* and *client*.
+ * A master is a host which runs a master server of fairy and nodes are hosts, each of which runs a node server of fairy. A master and nodes make a *fairy cluster*.
+ * A master server organizes node servers to process jobs. Basically a master server just control nodes and nodes process all tasks in a job.
+ * the client is a host which runs user programs using the fairy client library and submits jobs to a fairy cluster.
+
+http://fairy-prj.googlecode.com/files/fairy_system_overview.png
+
+ * _Note: We can make a host to play multiple roles, e.g. master + node, master + client and so on. Actually we can run all on a single host._
+
+=== VFile ===
+
+ * *VFile* is a facility to distribute data over the fairy cluster.
+ * A VFile file has "*.vf*" extension. A ".vf" file itself is like a descriptor because it only contains information indicating which host has which data partitions.
+ * fairy optimizes its locality of processings with VFile. Therefore, the distribution of input VFile often decides concurrency of processings.
+ * fairy includes a command-line utility that creates a VFile from a local file.
+
+== Example: Word Count ==
+
+{{{
+require 'rubygems'
+require 'fairy'
+
+fairy = Fairy::Fairy.new
+input = fairy.input "testdata.vf"
+
+mapped = input.mapf(%{|ln|
+  ln.split
+})
+
+grouped = mapped.group_by(%{|w| w})
+
+counted = grouped.map(%q{|bag|
+  "#{bag.key}\t#{bag.size}"
+})
+
+counted.output "wc-out.txt"
+}}}
+
+ * Before trying this example, you may need to distribute the input data to your fairy cluster and create a ".vf" file.
+ * You can do that with the following `fairy` command:
+
+{{{
+fairy cp --split-no=20 your_input_data.txt testdata.vf
+}}}
+
+  * _Note: Adjust `--split-no=N` to your cluster size._
+
+ * If you would like to remove data from the cluster, you can do that with the following `fairy` command:
+
+{{{
+fairy rm testdata.vf
+}}}
+
+  * This also removes the ".vf" file itself.
+
+_Please begin with the following contents which show you how to install fairy and the basic usage._
+ * [Prerequisites Prerequisites]
+ * [StartupAndShutdown Startup & Shutdown]
+ * [Tutorial Tutorial]
+
+----
+
+Copyright (c) Rakuten, Inc. All Right Reserved

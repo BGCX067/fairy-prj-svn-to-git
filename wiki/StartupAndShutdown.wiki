@@ -1,0 +1,85 @@
+#summary how to start/stop a fairy cluster
+#sidebar SideBar
+
+= Startup & Shutdown =
+
+<wiki:toc max_depth="3" />
+
+== Starting/Stopping a fairy cluster with Capistrano ==
+
+Although we can start/stop the servers by executing the command directly on each host, it is more convenient to do so with *Capistrano*. 
+
+[http://www.capify.org/ Capistrano] is a well-known open source tool for running scripts on multiple hosts. A script interpreted by Capistrano for certain purposes is called a *recipe*.
+
+fairy contains a recipe for starting/stopping the servers.
+
+=== Installing Capistrano ===
+
+You can install Capistrano simply with RubyGems (i.e. `gem` command).
+
+{{{
+sudo gem install capistrano
+}}}
+
+_Note: You don't need to install it to all related hosts, but to just one used for the operation._
+
+=== Setup ===
+
+Move to `$FAIRY_HOME/tools/cap_recipe` and copy `cluster.yml.sample` into `cluster.yml`.
+
+Edit `cluster.yml` along with your cluster.
+ * `run_uid`: user which runs the server on each host
+ * `master`: host name on which you run the master server
+ * `nodes`: list of host names on which you run the node servers
+
+For example:
+{{{
+#
+# fairy servers
+#
+run_uid: fairy
+master: fairy01
+nodes:
+  - fairy02
+  - fairy03
+  - fairy04
+}}}
+
+=== Startup ===
+
+To start the servers, hit the following commands:
+
+{{{
+cd $FAIRY_HOME/tools/cap_recipe
+cap start
+}}}
+
+=== Shutdown ===
+
+To stop the servers, hit the following commands:
+
+{{{
+cd $FAIRY_HOME/tools/cap_recipe
+cap stop
+}}}
+
+_Note: Now "stop" task uses "kill -9" internally, but this is not a good way, we may change to a better way in the future._
+
+=== Other tasks in the recipe ===
+
+The recipe includes some tasks besides starting/stopping servers.
+
+|| *Task* || *Description* ||
+|| `ps` || Show fairy processes on the cluster ||
+|| `showinfo` || Show some information of the cluster<ul><li>Versions of Ruby and fairy<li>Values of `$RUBYLIB`/`$FAIRY_HOME` environment var<li>Path of fairy command ||
+|| `clear_log` || Truncate fairy log (master:`/tmp/fairy/log`) ||
+
+You can list all available tasks with following commands:
+
+{{{
+cd $FAIRY_HOME/tools/cap_recipe
+cap -T
+}}}
+
+-----
+Copyright (c) Rakuten, Inc. All Right Reserved

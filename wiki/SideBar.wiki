@@ -1,0 +1,10 @@
+#summary common side bar
+
+ * [Overview Overview]
+ * [http://github.com/fairy-prj/fairy Source Code on github]
+ * Getting Started
+  * [Prerequisites Prerequisites]
+  * [StartupAndShutdown Startup & Shutdown]
+  * [Tutorial Tutorial]
+ * Documentation
+  * [http://fairy-prj.googlecode.com/files/programming-interface.html Filter API Reference]<br>(Only available in Japanese)

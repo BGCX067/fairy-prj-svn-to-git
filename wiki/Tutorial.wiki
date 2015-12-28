@@ -1,0 +1,213 @@
+#summary learning about basic usage of fairy
+#sidebar SideBar
+
+= Tutorial =
+
+<wiki:toc max_depth="3" />
+
+In this tutorial, we demonstrate an example using some of fairy's filters to learn the concept and basic usage of fairy.
+
+== Creating Test Data ==
+
+You can create data to be used in the demonstration here with the script contained in fairy package.
+
+To do that, hit the following command:
+
+{{{
+$FAIRY_HOME/spec/mkdat.rb
+}}}
+
+ * `$FAIRY_HOME` is a necessary environment variable and its value should be the installation root of fairy.
+ * For details, see "[Prerequisites Prerequisites]"
+
+It will generate data files listed bellow in your current directory:
+ * testdata.txt
+ * testdata_multi.txt
+ * testdata_join_a.txt
+ * testdata_join_b.txt
+
+== Distributing Data to the fairy Cluster ==
+
+First, you need to distribute data to your fairy cluster and create a VFile (".vf" file).
+
+You can do that simply with the following `fairy` command:
+
+{{{
+fairy cp --split-no=20 testdata.txt testdata.vf
+}}}
+
+It will split local data file into segments, copy each segment into a certain host in the cluster, and finally generate a VFile (".vf" file) that contains the locations of all segments.
+
+The number of segments is decided by `--split-no` option. So you should adjust the number along with your cluster. We recommend making the number the total number of CPUs of node-hosts in your cluster.
+
+In many cases, the distribution of a VFile decides concurrency of processing. So the number is important.
+
+== Coding a Program Using fairy ==
+
+In this example, we will demonstrate some features of fairy. 
+
+We extract IDs that are equal or greater than 500 and less than 600 from `testdata.vf` data, count the occurrence of them, and sort them in ascending-order. The result will be written into a local file.
+
+Through this example, we learn about not only basic filters but also other essential usage.
+
+=== The Code ===
+
+Let's create a new ruby program in which we use fairy and name it `example.rb`.
+
+{{{
+require 'rubygems'
+require 'fairy'
+
+fairy = Fairy::Fairy.new
+
+input = fairy.input "testdata.vf"
+
+mapped = input.map(%{|ln|
+  id = ln.chomp.to_i
+  id
+})
+
+selected = mapped.select(%{|id|
+  (id >= 500) && (id < 600)
+})
+
+grouped = selected.group_by(%{|id| 
+  id.to_s
+})
+
+counted = grouped.map(%{|bag|
+  [bag.key, bag.size]
+})
+
+sorted = counted.sort_by(%{|ary|
+  ary[0]
+})
+
+formatted = sorted.map(%q{|ary|
+  str = "#{ary[0]}\t#{ary[1]}"
+  str
+})
+
+formatted.output "example-out.txt"
+}}}
+
+=== Walk-through ===
+
+First, load the fairy client library in the program.
+
+{{{
+require 'rubygems'
+require 'fairy'
+}}}
+
+Next, create a new fairy instance to establish a connection to the fairy cluster.
+
+{{{
+fairy = Fairy::Fairy.new
+}}}
+
+ * Here, fairy reads essential settings, such as master host and master server port, from `$FAIRY_HOME/etc/fairy.conf`.
+
+Open an existing VFile that you'd like to process. Here, it is `testdata.vf`.
+
+{{{
+input = fairy.input "testdata.vf"
+}}}
+
+For each entity, strip its newline and convert it to integer.
+
+{{{
+mapped = input.map(%{|ln|
+  id = ln.chomp.to_i
+  id
+})
+}}}
+
+ * In a VFile, an entity (unit of datum) is a line, so the block argument `ln` corresponds to one of the lines in `testdata.vf`.
+ * The block given to the filter is source code of a block (i.e. `String`), not an actual block, although we recognize this should be changed in the future.
+ * Result of the block is the value evaluated last in the block (i.e. `id` here) and is passed respectively to the next filter.
+
+Select designated IDs (i.e. equal or greater than 500 and less than 600).
+
+{{{
+selected = mapped.select(%{|id|
+  (id >= 500) && (id < 600)
+})
+}}}
+
+ * The block argument `id` corresponds to one of the results from previous filter.
+ * If the result of the block is true, `select` filter will pass the value from previous filter to the next filter without any changes. Otherwise, it will not pass the value to the next filter.
+
+Divide selected IDs into groups, each of which contains same IDs.
+
+{{{
+grouped = selected.group_by(%{|id| 
+  id.to_s
+})
+}}}
+
+ * `group_by` filter divides all entities into groups according to the results of the block.
+  * The results of the block must be `String` for now.
+ * The values from previous filter themselves aren't changed.
+
+Count the occurrence of each ID.
+
+{{{
+counted = grouped.map(%{|bag|
+  [bag.key, bag.size]
+})
+}}}
+
+ * The block argument `bag` is a bag containing entities, each having the same result of the `group_by`'s block.
+ * You can refer a bag to the result of the `group_by`'s block with `#key`. Here, it will refer to an ID. (_The "#" means that the following identifier is a method name._)
+ * A bag can be treated like `Enumerable` and has `#each`, `#size` and so on. Here, we count the number of entities in a bag (i.e. occurrence of an ID) with `#size`.
+
+Sort IDs in ascending-order.
+
+{{{
+sorted = counted.sort_by(%{|ary|
+  ary[0]
+})
+}}}
+
+ * `sort_by` filter sorts entities according to the result of the block.
+ * Here, we use the first element of the entity (an array) for the sort-key.
+
+Format data in order to output.
+
+{{{
+formatted = sorted.map(%q{|ary|
+  str = "#{ary[0]}\t#{ary[1]}"
+  str
+})
+}}}
+
+ * If you need to use `#{ ... }` annotation for formatting or something in a filter's block, you have to use `%q{ ... }` for the filter's block to avoid misinterpreting the code.
+
+Last, output to local file and terminate the job.
+
+{{{
+formatted.output "example-out.txt"
+}}}
+
+ * Here, the data are transferred from the cluster and store as a local file.
+ * By using a file name with ".vf" suffix instead of ".txt", you can store the data as a VFile. In other words, you can leave the data in the cluster.
+
+== Executing the program ==
+
+You can run the program simply with the following command:
+
+{{{
+ruby example.rb
+}}}
+
+The result will be output to `example-out.txt` in your current directory.
+
+== See Also ==
+
+ * [http://fairy-prj.googlecode.com/files/programming-interface.html Filter API reference] (Only available in Japanese)
+ * Other sample programs
+  * Some other sample programs are located in `$FAIRY_HOME/sample` directory.
+
+-----
+Copyright (c) Rakuten, Inc. All Right Reserved

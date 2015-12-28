@@ -1,0 +1,73 @@
+#summary prerequisites for fairy
+#sidebar SideBar
+
+= Prerequisites =
+
+<wiki:toc max_depth="3" />
+
+== Supported Platforms ==
+
+ * fairy has been tested on a *Debian GNU/Linux 5.0 (IA32)* cluster.
+ * We assume that it also works on the other Linux distributions although we have not tested on them.
+
+== Required Software ==
+
+ * *[http://www.ruby-lang.org/en/ Ruby]* 1.9.1-p430 or greater
+<wiki:comment>
+ * Following libraries for Ruby:
+  * *[http://github.com/keiju/DeepConnect DeepConnect]*: a distributed object system
+  * *[http://github.com/keiju/fiber-mon fiber-mon]*: a fiber utility
+
+=== How to Install DeepConnect ===
+
+ * Download tarball from the [http://github.com/keiju/DeepConnect web site] and uncompress it.
+ * Put `lib/deep-connect` directory and `lib/deep-connect.rb` into a directory which is contained in `$:` (`$LOAD_PATH`) on Ruby, e.g. `/usr/lib/ruby/1.9.1`.
+ * Or add the location where `lib` directory is to `$RUBYLIB` environment variable.
+
+=== How to Install fiber-mon ===
+
+ * Download tarball from the [http://github.com/keiju/fiber-mon web site] and uncompress it.
+ * Put `fiber-mon.rb` into a directory which is contained in `$:` (`$LOAD_PATH`) on Ruby, e.g. `/usr/lib/ruby/1.9.1`.
+ * Or add the location where `fiber-mon.rb` is to `$RUBYLIB` environment variable.
+</wiki:comment>
+
+== Download and Installation ==
+
+You can install fairy with RubyGems, i.e. `gem` command.
+
+{{{
+sudo gem install fairy
+}}}
+
+That's all, simple!
+
+At the same time, necessary libraries will be installed automatically.
+ * *[http://github.com/keiju/DeepConnect DeepConnect]*: a distributed object system
+ * *[http://github.com/keiju/fiber-mon fiber-mon]*: a fiber utility
+
+_Note: You need to install fairy to all related hosts (master, node and client)._
+
+== Configuration ==
+
+=== Environment Variables ===
+
+ * Set `$FAIRY_HOME` environment variable to the installation root of fairy. It is usually `/usr/local/lib/ruby/gems/1.9.1/gems/fairy-x.y.z` or `/var/lib/gems/1.9.1/gems/fairy-x.y.z`. (_Replace "x.y.z" to the version number of fairy which you installed._)
+ * If you would like to process multi-byte data, for example UTF-8, set `$RUBYOPT` environment variable to `-EUTF-8`.
+ * _Note: You need to set these variables on all related hosts (master, node and client)._
+
+=== fairy.conf ===
+
+ * `fairy.conf` is an important configuration file for fairy. It is located in `$FAIRY_HOME/etc`.
+ * To edit configuration, first, copy `fairy.conf.tmpl` into `fairy.conf`.
+ * Although there are many configuration parameters, at least, set `CONF.MASTER_HOST` to host-name on which you run master server.
+ * And also you may need to set `CONF.LOG_FILE`. It specifies the location to where the master server writes logs (default: /tmp/fairy/log).
+ * _Note: You need to set these parameters on all related hosts (master, node and client)._
+<wiki:comment> * To learn more about fairy.conf, look [xxxxx here].</wiki:comment>
+
+=== Directories ===
+
+ * On the all related hosts (master, node and client), create `/tmp/fairy/tmpbuf` directory to where fairy writes data in the buffer temporarily.
+ * On the host on which you run master server, create `/tmp/fairy` directory to where fairy writes logs. If you set `CONF.LOG_FILE` parameter to change the location, you need to create a directory for it instead of `/tmp/fairy`.
+
+-----
+Copyright (c) Rakuten, Inc. All Right Reserved
